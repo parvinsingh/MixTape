@@ -1,0 +1,68 @@
+README.md
+
+Assumption:
+1) We are only modifying playlists nothing else.
+
+In a Multi-threaded environment, what would happen:
+1) This code will be accessed by multiple threads on the machine. There will be number of different clients trying to modify the MixTape playlists.
+2) One thread might be deleting a playlist, while the other thread might just try to add a song to the same playlist.
+3) One thread might access the updated list before the actual update has happened, because of the use of the static variables.
+
+How do we fix this for multiple threads but the application running on just one server?
+Option -1) This can be fixed by using lock in the ModifyMixTapeData class, and not on the entire object. 
+Whenever an action needs to happen.
+
+private Lock lock;
+
+boolean getLock(){
+	return lock.tryLock();  // returns true if there is no other thread who has the lock
+}
+
+addPlaylist(){
+	if(getLock()){
+	
+	.....
+	.....
+	}
+}
+
+A good way to use locks could also be that we use timedLocks. This means that a thread acquires a lock for some time,
+and within that time either takes an action OR just removes the lock.
+
+If we use a background thread (some background service that during startup, just takes the input, and keeps the playlist in its cache)
+to store the playlist data, then we can have other threads use this playlist data as they need it.
+
+
+How do we fix this in a distributed environment (deployed on multiple servers) and for multiple threads?
+
+Option -2) It will actually be good to store the Input data after JSON parsing in a database, likely REDIS or just memory cache(if the data is 1-2 GB only).
+e.g: MemoryCache in .NET framework OR ThreadLocalCache in JAVA.
+We can create a simple TimedExpiryCache (extending any of the above offerings) that would store the data in memory for a certain time
+	whenever the object for ModifyPlaylist is created.
+We will still need locks as in Option 1, whenever we modify the values in cache.
+When the expiry time is reached, the background thread would fetch latest data from REDIS or data base(if we are not using REDIS).
+
+Suggestion:
+The Modification to the playlist could be handled using queues.
+Say, a ChangeFile is input, Then we can have a JobScheduler running, which will process the ChangeFile, and create
+3 different types of jobs (OR may be just 1 job, depending on the product idea here).
+
+Once the job is created, it is queued in a system. Say a MessageQueue or something similar.
+A queue reader (in this case ModifyMixTape) wakes up every 5 mins to check for a queue message and if there is one
+will pick the message. 
+Now when the message is picked up, it will acquire a lock on the original playlist and modify it. We can time the lock
+to automatically expire in 30secs. Automatic 30 sec expiry means that- either the modification happens in 30 secs OR
+the lock is auto released by the ModifyMixTape, and the message is put into a RetryQueue.
+
+Queue -> will be a very good option when scaling this data for handling multiple edits from different ChangeFiles.
+
+
+
+
+
+
+
+
+
+
+

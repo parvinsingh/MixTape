@@ -1,0 +1,29 @@
+{
+  "RemovePlaylist": [
+    {
+      "song_ids": [
+        "8",
+        "32"
+      ]
+    },
+    {
+      "user_id": "3"
+    }
+  ],
+  "CreatePlaylist": [
+    {
+      "user_id": "2",
+      "song_ids": [
+        "8"
+      ]
+    }
+  ],
+  "AddSong": [
+    {
+      "id": "1",
+      "song_ids": [
+        "16"
+      ]
+    }
+  ]
+}
